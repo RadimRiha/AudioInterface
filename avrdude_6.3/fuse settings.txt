@@ -1,0 +1,6 @@
+avrdude -C C:\Users\radim\Desktop\avrdude_6.3\avrdude.conf -v -p atmega328pb -c stk500v1 -P COM97 -b 19200 -U lfuse:w:0xe2:m	//atmega328PB internal 8MHz
+avrdude -C C:\Users\radim\Desktop\avrdude_6.3\avrdude.conf -v -p atmega328pb -c stk500v1 -P COM97 -b 19200 -U lfuse:w:0xcd:m	//atmega328PB external 3-8MHz
+avrdude -C C:\Users\radim\Desktop\avrdude_6.3\avrdude.conf -v -p atmega328pb -c stk500v1 -P COM97 -b 19200 -U lfuse:w:0xcf:m	//atmega328PB external 8-16MHz
+-U efuse:w:0xfd:m  //BOD 2.7V
+
+avrdude -C C:\Users\radim\Desktop\avrdude_6.3\avrdude.conf -v -p atmega16u2 -c stk500v1 -P COM4 -b 19200 -U lfuse:w:0xde:m	//atmega16u2 external 8-16MHz
