@@ -29,8 +29,8 @@
 //device descriptor
 #define DD_bLength 18
 #define DD_bDescriptorType DESCRIPTOR_DEVICE
-#define DD_bcdUSB_L 0x00	//USB 2.0
-#define DD_bcdUSB_H 0x02
+#define DD_bcdUSB_L 0x10	//USB 1.1
+#define DD_bcdUSB_H 0x01
 #define DD_bDeviceClass 0x00
 #define DD_bDeviceSubClass 0x00
 #define DD_bDeviceProtocol 0x00
@@ -97,17 +97,18 @@ void led(uint8_t state) {
 }
 
 void sendDeviceDescriptor() {
-	for (uint8_t i = 0; i < DD_bLength; i++) {
+	UEINTX &= ~(1 << RXSTPI);			//ACK setup packet, clears UEDATX!
+	if(wLength > DD_bLength) wLength = DD_bLength;
+	for (uint8_t i = 0; i < wLength; i++) {
 		UEDATX = DD_buffer[i];
 	}
-
-	UEINTX &= ~(1 << TXINI);
+	UEINTX &= ~(1 << TXINI);			//send the bank
 	while(!(UEINTX & (1 << TXINI))) {}	//wait for controller to signal bank free
-	while(!(UEINTX & (1 << RXOUTI))) {}	//wait for OUT packet and ACK it
-	UEINTX &= ~(1 << RXOUTI);
+	while(!(UEINTX & (1 << RXOUTI))) {}	//wait for OUT packet
+	UEINTX &= ~(1 << RXOUTI);			//ACK the OUT packet
 }
 
-void controlRead() {
+void controlTransfer() {
 	switch (bmRequestType) {
 	case 0b10000000:
 		switch (bRequest) {
@@ -119,12 +120,20 @@ void controlRead() {
 				}
 			break;
 		}
+	break;
+	case 0b00000000:
+		switch (bRequest) {
+		case SET_ADDRESS:
+			UDADDR = 0;
+			UDADDR |= wValue & ~(1 << ADDEN);	//set only address field
+			UEINTX &= ~(1 << RXSTPI);			//ACK setup packet
+			UEINTX &= ~(1 << TXINI);			
+			while(!(UEINTX & (1 << TXINI))) {}	//wait for IN packet
+			UDADDR |= (1 << ADDEN);				//enable address field
 		break;
+		}
+	break;
 	}
-}
-
-void controlWrite() {
-	
 }
 
 int main(void) {
@@ -143,7 +152,6 @@ int main(void) {
 			sei();
 		}
 		
-		
 		if(UEINTX & (1 << RXSTPI)) {	//setup command from USB host
 			bmRequestType = UEDATX;
 			bRequest = UEDATX;
@@ -156,16 +164,21 @@ int main(void) {
 			wLength = 0;
 			wLength =  UEDATX;
 			wLength |= (UEDATX << 8);
-			UEINTX &= ~(1 << RXSTPI);	//clears UEDATX!
-			if(bmRequestType & (1 << 7)) controlRead();
-			else controlWrite();
+			
+			controlTransfer();
+			
+			//PORTD = UDADDR;
+			if(bRequest != GET_DESCRIPTOR && bRequest != SET_ADDRESS) {
+				led(1);
+				PORTD = bRequest;
+			}
 		}
 		
 		if(UEINTX & (1 << RXOUTI)) {
-			//UEINTX &= ~(1 << RXOUTI);
+			UEINTX &= ~(1 << RXOUTI);
 		}
 		if(UEINTX & (1 << TXINI)) {
-			//UEINTX &= ~(1 << TXINI);
+			UEINTX &= ~(1 << TXINI);
 		}
 		if(UDINT & (1 << WAKEUPI)) {
 			UEINTX &= ~(1 << WAKEUPI);
